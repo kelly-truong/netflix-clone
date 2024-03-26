@@ -6,11 +6,10 @@ import movieTrailer from 'movie-trailer'
 
 const base_url = "https://image.tmdb.org/t/p/original/"
 
-const Row = ({ title, fetchUrl, isLargeRow }) => {
+const Row = ({ title, fetchUrl, isLargeRow, rowSelected, setRowSelected }) => {
     const [movies, setMovies] = useState([])
-    const [trailerUrl, setTrailerUrl] = useState("")
-    const [error, setError] = useState("")
-    const [movieClick, setMovieClick] = useState("")
+    const [trailerUrl, setTrailerUrl] = useState(null)
+    const [movieSelected, setMovieSelected] = useState(null)
 
     useEffect(() => {
         async function fetchData() {
@@ -30,28 +29,57 @@ const Row = ({ title, fetchUrl, isLargeRow }) => {
         }
     }
 
-    const handleClick = (movie) => {   
-        setMovieClick(movie)
-        if (error) {
-            setError("")
+    useEffect(() => {
+        if (rowSelected !== title) {
+            setTrailerUrl(null)
         }
-        else if (trailerUrl) {
-            setTrailerUrl("")
+    }, [rowSelected])
+
+    const handleClick = async (movie) => {
+        setRowSelected(title)
+        if (movieSelected === movie.id) {
+            setTrailerUrl(null)
+            setMovieSelected(null)
         }
         else {
-            movieTrailer(movie?.title || movie?.name || movie?.original_name || "")
+            setMovieSelected(movie.id)
+            const result = await movieTrailer(movie?.title || movie?.name || movie?.original_name || "")
                 .then(url => {
                     const urlParams = new URLSearchParams(new URL(url).search)
-                    setTrailerUrl(urlParams.get('v'))
+                    return urlParams.get('v')
                 })
                 .catch(error => {
-                    setError(error)
+                    return ""
                 })
+            setTrailerUrl(result)
         }
     }
+    
+// next trailer or error should pop up w/ one click if another movie is active
+    // if the same movie is clicked, reset its state
+    // if a diff movie is clicked, update its state & make sure other state is falsey
 
-    // next trailer or error should pop up w/ one click if another movie is clicked
-    // two trailers play when in diff rows
+    // const handleClick = (movie) => {   
+    //     setMovieClick(movie.id)
+    //     console.log(movieClick)
+    //     if (movieClick === movie.id) {
+    //         setTrailerUrl("")
+    //         setMovieClick("")
+    //         setError("")
+    //     }
+    //     else {
+    //         movieTrailer(movie?.title || movie?.name || movie?.original_name || "")
+    //             .then(url => {
+    //                 const urlParams = new URLSearchParams(new URL(url).search)
+    //                 setTrailerUrl(urlParams.get('v'))
+    //                 setError("")
+    //             })
+    //             .catch(error => {
+    //                 setError(error)
+    //                 setTrailerUrl("")
+    //             })
+    //     }
+    // }
 
     return (
         <div className="row">
@@ -67,10 +95,11 @@ const Row = ({ title, fetchUrl, isLargeRow }) => {
                     />
                 ))}
             </div>
-            {trailerUrl && <YouTube videoId={trailerUrl} opts={opts} />}
-            <div className="error__message">
-                {error && 'Trailer not available :('}
-            </div>
+            {trailerUrl !== null && (trailerUrl !== ""
+                ? <YouTube videoId={trailerUrl} opts={opts} />
+                : <div className="error__message">
+                    {'Trailer not available :('}
+                </div>)}
         </div>
     )
 }
